@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/chandanikumari/tinyapp/issues"
   },
-  "homepage": "https://github.com/chandanikumari/tinyapp#readme"
+  "homepage": "https://github.com/chandanikumari/tinyapp#readme",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
 }
