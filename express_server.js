@@ -19,7 +19,7 @@ const generateRandomString = function() {
   return str;
 };
 
-const urlDatabase = {
+let urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 };
@@ -51,8 +51,17 @@ app.get("/urls/:id", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body); // Log the POST request body to the console
-  res.send("Ok"); // Respond with 'Ok' (we will replace this)
+  const tinyUrl = generateRandomString();
+  // console.log(req.body); // Log the POST request body to the console
+  urlDatabase[tinyUrl] = req.body.longURL;
+  //res.send("Ok"); // Respond with 'Ok' (we will replace this)
+  res.redirect(`urls/${tinyUrl}`);
+});
+
+app.get("/u/:id", (req, res) => {
+  //console.log(req);
+  const longURL = urlDatabase[req.params.id];
+  res.redirect(`urls/${longURL}`);
 });
 
 app.listen(PORT, () => {
