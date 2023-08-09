@@ -1,6 +1,10 @@
 const express = require("express");
+const morgan = require('morgan');
+
 const app = express();
 const PORT = 8080; // default port 8080
+
+app.use(morgan('dev'));
 
 app.set("view engine", "ejs");
 
@@ -19,6 +23,19 @@ app.get("/urls.json", (req, res) => {
 
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
+});
+
+app.get("/urls", (req, res) => {
+  const templateVars = { urls: urlDatabase };
+  res.render("urls_index", templateVars);
+});
+
+app.get("/urls/:id", (req, res) => {
+  const templateVars = {
+    id: req.params.id,
+    longURL: req.params.urls /* What goes here? */
+  };
+  res.render("urls_show", templateVars);
 });
 
 app.listen(PORT, () => {
