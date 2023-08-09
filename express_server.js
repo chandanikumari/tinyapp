@@ -52,9 +52,7 @@ app.get("/urls/:id", (req, res) => {
 
 app.post("/urls", (req, res) => {
   const tinyUrl = generateRandomString();
-  // console.log(req.body); // Log the POST request body to the console
   urlDatabase[tinyUrl] = req.body.longURL;
-  //res.send("Ok"); // Respond with 'Ok' (we will replace this)
   res.redirect(`urls/${tinyUrl}`);
 });
 
@@ -64,8 +62,21 @@ app.get("/u/:id", (req, res) => {
   res.redirect(`urls/${longURL}`);
 });
 
+// Delete
 app.post("/urls/:id/delete", (req, res) => {
   delete urlDatabase[req.params.id];
+  res.redirect("/urls");
+});
+
+// Edit
+
+app.get("/urls/:id/edit",  (req, res) => {
+  urlDatabase[req.params.id].longURL = req.body.newURL;
+  res.redirect(`urls/${req.params.id}`);
+});
+
+app.post("/urls/:id/edit", (req, res) => {
+  urlDatabase[req.params.id].longURL = req.body.newURL;
   res.redirect("/urls");
 });
 
