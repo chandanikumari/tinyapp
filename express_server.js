@@ -33,7 +33,7 @@ app.get("/urls", (req, res) => {
 app.get("/urls/:id", (req, res) => {
   const templateVars = {
     id: req.params.id,
-    longURL: req.params.urls /* What goes here? */
+    longURL: urlDatabase[req.params.id] /* What goes here? */
   };
   res.render("urls_show", templateVars);
 });
