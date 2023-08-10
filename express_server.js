@@ -1,11 +1,12 @@
 const express = require("express");
 const morgan = require('morgan');
-
+const cookieParser = require('cookie-parser');
 const app = express();
 const PORT = 8080; // default port 8080
 
 app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 
 app.set("view engine", "ejs");
@@ -37,7 +38,10 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  const templateVars = {
+    urls: urlDatabase,
+    username: req.cookies["username"],
+  };
   res.render("urls_index", templateVars);
 });
 
@@ -46,7 +50,8 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
-  const templateVars = {id: req.params.id, longURL: urlDatabase[req.params.id]};
+  const templateVars = {id: req.params.id, longURL: urlDatabase[req.params.id],
+    username: req.cookies["username"]};
   res.render("urls_show", templateVars);
 });
 
@@ -62,21 +67,37 @@ app.get("/u/:id", (req, res) => {
   res.redirect(`urls/${longURL}`);
 });
 
-// Delete
+// DELETE
 app.post("/urls/:id/delete", (req, res) => {
   delete urlDatabase[req.params.id];
   res.redirect("/urls");
 });
 
-// Edit
+// EDIT
 
 app.get("/urls/:id/edit",  (req, res) => {
   urlDatabase[req.params.id].longURL = req.body.newURL;
+  console.log("New URL at GET is : ", urlDatabase);
   res.redirect(`urls/${req.params.id}`);
 });
 
 app.post("/urls/:id/edit", (req, res) => {
   urlDatabase[req.params.id].longURL = req.body.newURL;
+  console.log("New URL is : ", urlDatabase);
+  res.redirect("/urls");
+});
+
+// LOGIN
+
+app.post("/login", (req, res) => {
+  const candidateUsername = req.body.username;
+  res.cookie('username', candidateUsername);
+  res.redirect('/urls');
+});
+
+// LOGOUT
+app.post("/logout", (req, res) => {
+  res.clearCookie('username');
   res.redirect("/urls");
 });
 
