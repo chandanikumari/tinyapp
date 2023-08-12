@@ -1,52 +1,19 @@
 const express = require("express");
 const morgan = require('morgan');
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const bcrypt = require("bcryptjs");
-
+const {generateRandomString, getUserByEmail, urlsForUser} = require("./helpers");
 const app = express();
 const PORT = 8080; // default port 8080
 
 app.use(morgan('dev'));
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-
+app.use(cookieSession({
+  name: 'session',
+  keys: ['TQUTF8GzUhPbfMFA5h9iwDzZkzpgNfwn3yFB6'],
+}));
 app.set("view engine", "ejs");
 
-const generateRandomString = function() {
-  const alphanum = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  let str = "";
-  for (let i = 0; i < 6; i++) {
-    let StrIndex = Math.floor(Math.random() * 61);
-    str += alphanum[StrIndex];
-  }
-  return str;
-};
-
-// TODO come back tooo
-const urlsForUser = function(userID, database) {
-  console.log('beginning of fundtion',userID, database);
-  let userURLs = {};
-  for (const url in database) {
-    if (database[url].userID === userID) {
-      userURLs[url] = database[url];
-    }
-  }
-  console.log('urlsForUser', userURLs);
-  return userURLs;
-};
-
-
-
-
-const getUserByEmail = function(email, users) {
-  for (const userId in users) {
-    if (users[userId].email === email) {
-      return userId;
-    }
-  }
-  return undefined;
-};
 
 //url Database
 const urlDatabase = {
@@ -78,20 +45,19 @@ const users = {
   },
 };
 
-// app.get("/", (req, res) => {
-//   res.send("Hello!");
-// });
-
-// app.get("/urls.json", (req, res) => {
-//   res.json(urlDatabase);
-// });
-
-// app.get("/hello", (req, res) => {
-//   res.send("<html><body>Hello <b>World</b></body></html>\n");
-// });
+app.get("/", (req, res) => {
+  const userID = req.session.userId;
+  if (!userID) {
+    res.redirect("/login");
+  }
+  res.redirect("/urls");
+});
 
 app.get("/urls", (req, res) => {
-  const userID = req.cookies.user_id;
+  const userID = req.session.userId;
+  if (!userID) {
+    return res.status(401).send('<h1> You are not authorized to visit this page </h1>');
+  }
   const urls = urlsForUser(userID, urlDatabase);
   const templateVars = {
     urls: urls,
@@ -100,21 +66,40 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
-app.get("/urls/new", (req, res) => {
-  const userID = req.cookies.user_id;
+app.post("/urls", (req, res) => {
+  const userID = req.session.userId;
+  
   if (!userID) {
-    res.redirect("/login");
+    return res.status(401).send('<h1> You are not authorized to visit this page </h1>');
+    
   }
-  const templateVars = {
-    urls: urlDatabase,
-    user: users[userID],
+  const shortURL = generateRandomString();
+  urlDatabase[shortURL] = {
+    longURL: req.body.longURL,
+    userID: req.session.userId,
   };
-  res.render("urls_new", templateVars);
+  res.redirect(`/urls/${shortURL}`);
+  
+});
+
+app.get("/urls/new", (req, res) => {
+  const userID = req.session.userId;
+  if (!userID) {
+    return res.redirect("/login");
+  } else {
+    const templateVars = {
+      urls: urlDatabase,
+      user: users[userID],
+    };
+    res.render("urls_new", templateVars);
+  }
 });
 
 app.get("/urls/:id", (req, res) => {
   const shortURL = req.params.id;
-  const userID = req.cookies.user_id;
+  const userID = req.session.userId;
+  console.log("Troubleshooting :", urlDatabase , userID);
+
   if (!userID) {
     return res.status(401).send('<h1> you must be logged in to view the shorten URL </h1>');
   }
@@ -135,9 +120,10 @@ app.get("/urls/:id", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  const userID = req.cookies.user_id;
+  const userID = req.session.userId;
+  console.log(userID);
   if (!userID) {
-    res.status(401).send('<h1> you must be logged in to creat short URLs </h1>');
+    return res.status(401).send('<h1> you must be logged in to creat short URLs </h1>');
   }
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = { longURL: req.body.longURL, userID: userID };
@@ -156,7 +142,7 @@ app.get("/u/:id", (req, res) => {
 
 // DELETE
 app.post("/urls/:id/delete", (req, res) => {
-  const userID = req.cookies.user_id;
+  const userID = req.session.userId;
   const shortURL = req.params.id;
   if (!userID) {
     res.status(401).send('<h1> you must be logged in to delete this shorten URL </h1>');
@@ -177,7 +163,7 @@ app.get("/urls/:id/edit",  (req, res) => {
 });
 
 app.post("/urls/:id/edit", (req, res) => {
-  const userID = req.cookies.user_id;
+  const userID = req.session.userId;
   const shortURL = req.params.id;
   if (!userID) {
     res.status(401).send('<h1> you must be logged in to edit this shorten URL </h1>');
@@ -191,7 +177,8 @@ app.post("/urls/:id/edit", (req, res) => {
 
 // LOGIN
 app.get('/login', (req, res) => {
-  const userID = req.cookies.user_id;
+  const userID = req.session.userId;
+  console.log("Troubleshooting : ",req.session);
   const templateVars = {
     user: users[userID],
   };
@@ -205,7 +192,8 @@ app.post("/login", (req, res) => {
   if (!getUserByEmail(submittedEmail, users)) {
     return res.status(403).send('<h1>There is no account associated with this email adress</h1>');
   } else if (bcrypt.compareSync(submittedPassword, users[userID].password)) {
-    res.cookie("user_id", userID);
+    req.session.userId = userID;
+    
     res.redirect('/urls');
   } else {
     return res.status(403).send('<h1>The password does not match with the associated email address</h1>');
@@ -214,20 +202,20 @@ app.post("/login", (req, res) => {
 
 // LOGOUT
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id');
-  console.log(req.cookies);
+  res.clearCookie('userId');
+  req.session = null;
   res.redirect("/login");
 });
 
 // REGISTER
 app.get("/register", (req, res) => {
-  const userID = req.cookies.user_id;
-  if (userID) {
-    res.redirect("/urls");
+  const userID = req.session.userId;
+  if (!userID) {
+    const templateVars = {user: users[userID]};
+    console.log("TemplateVars : ",templateVars);
+    return res.render("urls_register", templateVars);
   }
-  const templateVars = {user: users[userID]};
-  console.log("TemplateVars : ",templateVars);
-  res.render("urls_register", templateVars);
+  return res.redirect("/urls");
 });
 
 //create a registration handler
@@ -249,10 +237,23 @@ app.post('/register', (req, res) => {
       email: submittedEmail,
       password: bcrypt.hashSync(submittedPassword, 10)
     };
-    res.cookie('user_id', userID);
+    req.session.userId = userID;
     res.redirect('/urls');
   }
 });
+
+app.post("/urls/:id", (req, res) => {
+  const userID = req.session.userId;
+  const shortURL = req.params.id;
+  const userUrls = urlsForUser(userID, urlDatabase);
+  if (Object.keys(userUrls).includes(shortURL)) {
+    urlDatabase[shortURL].longURL = req.body.newURL;
+    res.redirect('/urls');
+  } else {
+    res.status(401).send("You do not have authorization to edit this short URL.");
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
