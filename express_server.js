@@ -38,12 +38,9 @@ const users = {
     email: "user2@example.com",
     password: "dishwasher-funk",
   },
-  asdfz: {
-    id: "asdfz",
-    email: "xyz@abc.com",
-    password: "asdf",
-  },
 };
+
+// GET /
 
 app.get("/", (req, res) => {
   const userID = req.session.userId;
@@ -52,6 +49,8 @@ app.get("/", (req, res) => {
   }
   res.redirect("/urls");
 });
+
+// GET /urls
 
 app.get("/urls", (req, res) => {
   const userID = req.session.userId;
@@ -66,21 +65,19 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
+// POST /urls
+
 app.post("/urls", (req, res) => {
   const userID = req.session.userId;
-  
   if (!userID) {
-    return res.status(401).send('<h1> You are not authorized to visit this page </h1>');
-    
+    return res.status(401).send('<h1> you must be logged in to creat short URLs </h1>');
   }
   const shortURL = generateRandomString();
-  urlDatabase[shortURL] = {
-    longURL: req.body.longURL,
-    userID: req.session.userId,
-  };
-  res.redirect(`/urls/${shortURL}`);
-  
+  urlDatabase[shortURL] = { longURL: req.body.longURL, userID: userID };
+  res.redirect(`urls/${shortURL}`);
 });
+
+// POST /urls/new
 
 app.get("/urls/new", (req, res) => {
   const userID = req.session.userId;
@@ -95,11 +92,11 @@ app.get("/urls/new", (req, res) => {
   }
 });
 
+// GET /urls/:id
+
 app.get("/urls/:id", (req, res) => {
   const shortURL = req.params.id;
   const userID = req.session.userId;
-  console.log("Troubleshooting :", urlDatabase , userID);
-
   if (!userID) {
     return res.status(401).send('<h1> you must be logged in to view the shorten URL </h1>');
   }
@@ -119,16 +116,7 @@ app.get("/urls/:id", (req, res) => {
   }
 });
 
-app.post("/urls", (req, res) => {
-  const userID = req.session.userId;
-  console.log(userID);
-  if (!userID) {
-    return res.status(401).send('<h1> you must be logged in to creat short URLs </h1>');
-  }
-  const shortURL = generateRandomString();
-  urlDatabase[shortURL] = { longURL: req.body.longURL, userID: userID };
-  res.redirect(`urls/${shortURL}`);
-});
+// GET /u/:id
 
 app.get("/u/:id", (req, res) => {
   const shortURL = req.params.id;
@@ -141,6 +129,7 @@ app.get("/u/:id", (req, res) => {
 });
 
 // DELETE
+
 app.post("/urls/:id/delete", (req, res) => {
   const userID = req.session.userId;
   const shortURL = req.params.id;
@@ -158,7 +147,6 @@ app.post("/urls/:id/delete", (req, res) => {
 
 app.get("/urls/:id/edit",  (req, res) => {
   urlDatabase[req.params.id].longURL = req.body.newURL;
-  console.log("New URL at GET is : ", urlDatabase);
   res.redirect(`urls/${req.params.id}`);
 });
 
@@ -178,7 +166,6 @@ app.post("/urls/:id/edit", (req, res) => {
 // LOGIN
 app.get('/login', (req, res) => {
   const userID = req.session.userId;
-  console.log("Troubleshooting : ",req.session);
   const templateVars = {
     user: users[userID],
   };
@@ -193,7 +180,6 @@ app.post("/login", (req, res) => {
     return res.status(403).send('<h1>There is no account associated with this email adress</h1>');
   } else if (bcrypt.compareSync(submittedPassword, users[userID].password)) {
     req.session.userId = userID;
-    
     res.redirect('/urls');
   } else {
     return res.status(403).send('<h1>The password does not match with the associated email address</h1>');
@@ -212,24 +198,19 @@ app.get("/register", (req, res) => {
   const userID = req.session.userId;
   if (!userID) {
     const templateVars = {user: users[userID]};
-    console.log("TemplateVars : ",templateVars);
     return res.render("urls_register", templateVars);
   }
   return res.redirect("/urls");
 });
 
-//create a registration handler
+
 app.post('/register', (req, res) => {
   const userID = generateRandomString();
   const submittedEmail = req.body.email;
   const submittedPassword = req.body.password;
-  //if email or password are empty
   if (!submittedEmail || !submittedPassword) {
-  //send back response with 400 status code
     return res.status(400).send('<h1>400 - Please enter valid email and password! </h1>');
-  //if someone tries to register with email that already in user object
   }  else if (getUserByEmail(submittedEmail, users)) {
-    //send back response with the 400 status code
     return res.status(400).send('<h1>400 - This email is already in use </h1>');
   } else {
     users[userID] = {
@@ -241,6 +222,8 @@ app.post('/register', (req, res) => {
     res.redirect('/urls');
   }
 });
+
+// POST /urls/:id
 
 app.post("/urls/:id", (req, res) => {
   const userID = req.session.userId;
@@ -254,8 +237,8 @@ app.post("/urls/:id", (req, res) => {
   }
 });
 
+// LISTEN
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
-
 });
