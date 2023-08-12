@@ -22,7 +22,7 @@ const generateRandomString = function() {
 };
 
 // TODO come back tooo
-const urlsForUser = function (userID, database) {
+const urlsForUser = function(userID, database) {
   console.log('beginning of fundtion',userID, database);
   let userURLs = {};
   for (const url in database) {
