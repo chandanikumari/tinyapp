@@ -1,6 +1,8 @@
 const express = require("express");
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const bcrypt = require("bcryptjs");
+
 const app = express();
 const PORT = 8080; // default port 8080
 
@@ -90,11 +92,7 @@ const users = {
 
 app.get("/urls", (req, res) => {
   const userID = req.cookies.user_id;
-  if (!userID) {
-    res.status(401).send('<h1> you must be logged in to shorten the URL </h1>');
-  }
   const urls = urlsForUser(userID, urlDatabase);
-  console.log('urls', urls);
   const templateVars = {
     urls: urls,
     user: users[userID],
@@ -118,10 +116,10 @@ app.get("/urls/:id", (req, res) => {
   const shortURL = req.params.id;
   const userID = req.cookies.user_id;
   if (!userID) {
-    res.status(401).send('<h1> you must be logged in to view the shorten URL </h1>');
+    return res.status(401).send('<h1> you must be logged in to view the shorten URL </h1>');
   }
   if (userID !== urlDatabase[shortURL].userID) {
-    res.status(401).send('<h1> you are not authoried to view this shorten URL </h1>');
+    return res.status(401).send('<h1> you are not authoried to view this shorten URL </h1>');
   }
   if (urlDatabase[shortURL]) {
     let templateVars = {
@@ -193,8 +191,9 @@ app.post("/urls/:id/edit", (req, res) => {
 
 // LOGIN
 app.get('/login', (req, res) => {
+  const userID = req.cookies.user_id;
   const templateVars = {
-    user: users[req.cookies.user_id],
+    user: users[userID],
   };
   res.render('urls_login', templateVars);
 });
@@ -203,13 +202,13 @@ app.post("/login", (req, res) => {
   const submittedEmail = req.body.email;
   const submittedPassword = req.body.password;
   const userID = getUserByEmail(submittedEmail, users);
-  if (getUserByEmail(submittedEmail, users)) {
-    if (submittedPassword === users[userID].password) {
-      res.cookie("user_id", userID);
-      res.redirect('/urls');
-    }
+  if (!getUserByEmail(submittedEmail, users)) {
+    return res.status(403).send('<h1>There is no account associated with this email adress</h1>');
+  } else if (bcrypt.compareSync(submittedPassword, users[userID].password)) {
+    res.cookie("user_id", userID);
+    res.redirect('/urls');
   } else {
-    return res.sendStatus(403);
+    return res.status(403).send('<h1>The password does not match with the associated email address</h1>');
   }
 });
 
@@ -248,7 +247,7 @@ app.post('/register', (req, res) => {
     users[userID] = {
       id: userID,
       email: submittedEmail,
-      password: submittedPassword
+      password: bcrypt.hashSync(submittedPassword, 10)
     };
     res.cookie('user_id', userID);
     res.redirect('/urls');
